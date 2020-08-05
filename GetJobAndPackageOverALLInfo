@@ -61,8 +61,8 @@ BEGIN
 			H.TotalStep,
 			 '}{' AS Seperator,
 			JI.step_id AS [قدم],JI.step_name AS [نام_قدم],
-			IIF(JI.JobLastStepExecuted  < JI.step_id OR Job_stop_execution_date IS NULL, 4, JI.StepLastRunOutcome) AS last_run_outcome,
-			IIF(JI.JobLastStepExecuted  < JI.step_id OR Job_stop_execution_date IS NULL, 'In Progress', JI.StepLastRunOutcomeName) --در حال حرکت در اجرا
+			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 4, JI.StepLastRunOutcome) AS last_run_outcome,
+			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 'In Progress', JI.StepLastRunOutcomeName) --در حال حرکت در اجرا
 					AS [نتیجه آخرین اجرا],
 			CONCAT(NULLIF(dbo.getShamsiDate( JI.next_scheduled_run_date ),'') + ' ' ,CONVERT(TIME(0),JI.next_scheduled_run_date)) [تاریخ اجرای بعدی],
 			--History.run_status/*دارای توضیح*/, 
@@ -86,6 +86,7 @@ BEGIN
 	---------------------- Package Total Run Data
   ;WITH TotalAnalyze 
 	AS(	SELECT	CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
+				e.package_name,
 				AVG(DATEDIFF( MILLISECOND, op.start_time, op.end_time )) AS [TotalAVG],
 				MAX(CONVERT(DATETIME,op.end_time)) [TotalLastRunEndTime],
 				--MAX(CONVERT(DATETIME,e.start_time)) OVER( PARTITION BY e.folder_name, e.project_name, e.package_name) [TotalLastRunStartTime],
@@ -101,7 +102,6 @@ BEGIN
 
 	 ), LastDayAnalyse
 	AS  (	SELECT		CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
-						e.package_name,
 		 				MIN(CONVERT(DATETIME,op.start_time)) LastDayStartTime,
 						--CONVERT(VARCHAR(8),DATEADD(MILLISECOND,AVG(DATEDIFF(MILLISECOND, op.start_time,op.end_time)),0),114) LastDayAVGDuration,
 						CONVERT(TIME(0),DATEADD(MILLISECOND,AVG(DATEDIFF(MILLISECOND, op.start_time,op.end_time)),0)) LastDayAVGDuration,
@@ -123,7 +123,7 @@ BEGIN
 			GROUP BY e.folder_name,e.project_name,e.package_name,tmp.LastRunStatus
 	)
 	SELECT	DISTINCT 
-			TA.Package_path,LDA.package_name,
+			TA.Package_path,TA.package_name,
 			CONVERT(VARCHAR(8),DATEADD(MILLISECOND,TA.TotalAVG,0),114) TotalAVG,
 			LDA.LastDayAVGDuration, LDA.LastDayStartTime, 
 			TA.TotalLastRunEndTime, LDA.LastRunStatus, LastRunExecutionID,
