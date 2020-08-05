@@ -54,7 +54,7 @@ BEGIN
 
 			CONCAT(dbo.getShamsiDate( JI.Job_start_execution_date ),' ',CAST(JI.Job_start_execution_date AS TIME(0))) AS [شروع جاب] ,
 			CONCAT(dbo.getShamsiDate( H.Run_DateTime ),' ',CAST(Run_DateTime AS TIME(0) )) AS [شروع قدم] ,
-			CASE WHEN JI.JobLastStepExecuted < H.TotalStep OR Job_stop_execution_date IS NULL
+			CASE WHEN Job_stop_execution_date IS NULL
 					THEN CONCAT(N'در حال اجرای قدم ', JI.JobLastStepExecuted + 1)
 						ELSE dbo.getShamsiDate(JI.Job_stop_execution_date ) + ' ' + CAST(CAST(JI.Job_stop_execution_date AS TIME(0) )AS varchar(8) ) END
 			AS [پایان جاب],
