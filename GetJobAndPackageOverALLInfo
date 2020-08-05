@@ -82,7 +82,7 @@ BEGIN
 					dbo.PackagesInJobs pj ON pj.job_id = JI.job_id AND JI.step_id = pj.step_id
 	WHERE	JI.JobEnabled = 1
 		AND JI.JobName NOT LIKE 'syspolicy%'
-		--تغییر از طریق ریستارت و غیره می باشد
+		--تغییر سشن از طریق ریستارت و غیره می باشد
 	---------------------- Package Total Run Data
   ;WITH TotalAnalyze 
 	AS(	SELECT	CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
