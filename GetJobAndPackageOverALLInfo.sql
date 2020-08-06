@@ -112,9 +112,8 @@ BEGIN
 						COUNT(IIF( op.status=4 AND CONVERT(DATETIME,op.start_time) >= @StartOfToday ,1,NULL)) TodayFailedCount,
 						--آخرین وضعیت اجرا
 							(SELECT op1.status
-								FROM	internal.executions e1 INNER JOIN internal.operations op1 ON op1.operation_id = e1.execution_id
-									 WHERE e1.folder_name=e.folder_name AND e1.project_name=project_name AND e1.package_name=e.package_name
-										AND op1.start_time = MAX(op.start_time)
+								FROM internal.operations op1 
+									 WHERE op1.operationid = MAX(op.operationid)
 											) AS LastRunStatus,
 						DATEDIFF( MILLISECOND, MAX(op.start_time), MAX(op.end_time) ) AS LastRunDuration
 
