@@ -110,17 +110,19 @@ BEGIN
 						--تعداد موفق از شروع روز
 						COUNT(IIF( op.status=7 AND CONVERT(DATETIME,op.start_time) >= @StartOfToday ,1,NULL)) TodaySuccessCount,
 						COUNT(IIF( op.status=4 AND CONVERT(DATETIME,op.start_time) >= @StartOfToday ,1,NULL)) TodayFailedCount,
-						tmp.LastRunStatus,
-						DATEDIFF( MILLISECOND, MAX(op.start_time), MAX(op.end_time) ) AS LastRunDuration
-			FROM	internal.executions e INNER JOIN
-						internal.operations op ON op.operation_id = e.execution_id  INNER JOIN 
-							--آخرین وضعیت اجرا
-							(SELECT op1.status AS LastRunStatus, ROW_NUMBER() OVER(PARTITION BY e1.folder_name,e1.project_name,e1.package_name ORDER BY op1.start_time DESC) rn,op1.operation_id
+						--آخرین وضعیت اجرا
+							(SELECT op1.status
 								FROM	internal.executions e1 INNER JOIN internal.operations op1 ON op1.operation_id = e1.execution_id
-									 WHERE CAST(op1.start_time AS DATETIME) > DATEADD( DAY, -1, GETDATE())
-											) AS tmp ON  op.operation_id = tmp.operation_id AND rn=1
+									 WHERE e1.folder_name=e.folder_name AND e1.project_name=project_name AND e1.package_name=e.package_name
+										AND op1.start_time = MAX(op.start_time)
+											) AS LastRunStatus,
+						DATEDIFF( MILLISECOND, MAX(op.start_time), MAX(op.end_time) ) AS LastRunDuration
+
+			FROM	internal.executions e INNER JOIN
+						internal.operations op ON op.operation_id = e.execution_id  
+
 			WHERE	CAST(op.start_time AS DATETIME) > DATEADD( DAY, -1, GETDATE())
-			GROUP BY e.folder_name,e.project_name,e.package_name,tmp.LastRunStatus
+			GROUP BY e.folder_name,e.project_name,e.package_name
 	)
 	SELECT	DISTINCT 
 			TA.Package_path,TA.package_name,
