@@ -86,18 +86,22 @@ BEGIN
 	---------------------- Package Total Run Data
   ;WITH TotalAnalyze 
 	AS(	SELECT	CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
-				e.package_name,
-				AVG(DATEDIFF( MILLISECOND, op.start_time, op.end_time )) AS [TotalAVG],
-				MAX(CONVERT(DATETIME,op.end_time)) [TotalLastRunEndTime],
-				--MAX(CONVERT(DATETIME,e.start_time)) OVER( PARTITION BY e.folder_name, e.project_name, e.package_name) [TotalLastRunStartTime],
-				MAX(e.execution_id)  LastRunExecutionID,
-				COUNT( IIF(op.status=7,1,NULL) )  TotalSuccess,
-				COUNT( IIF(op.status=2,1,NULL) ) TotalRunning,
-				COUNT( IIF(op.status=3,1,NULL) )  TotalCanceled,
-				COUNT( IIF(op.status=4,1,NULL) ) TotalFailed,
-				MAX( IIF(op.status=4, e.execution_id ,NULL) ) LastestFailedExecutionID
+			e.package_name,
+			AVG(DATEDIFF( MILLISECOND, op.start_time, op.end_time )) AS [TotalAVG],
+			MAX(CONVERT(DATETIME,op.end_time)) [TotalLastRunEndTime],
+			--MAX(CONVERT(DATETIME,e.start_time)) OVER( PARTITION BY e.folder_name, e.project_name, e.package_name) [TotalLastRunStartTime],
+			MAX(e.execution_id)  LastRunExecutionID,
+			COUNT( IIF(op.status=7,1,NULL) )  TotalSuccess,
+			COUNT( IIF(op.status=2,1,NULL) ) TotalRunning,
+			COUNT( IIF(op.status=3,1,NULL) )  TotalCanceled,
+			COUNT( IIF(op.status=4,1,NULL) ) TotalFailed--,
+			--MAX( IIF(op.status=4, e.execution_id ,NULL) ) LastestFailedExecutionID
 		FROM	internal.executions e INNER JOIN
-					internal.operations op ON op.operation_id = e.execution_id 
+					internal.operations op ON op.operation_id = e.execution_id INNER JOIN 
+					/* فقط پکیج هایی که در حال حاضر در سرور هستند*/
+						internal.folders dir ON e.folder_name = dir.name INNER JOIN 
+						--شرط ورژن پروژه ها بررسی نشده است تا اجرای همه ی ورژن ها بررسی شود
+							internal.projects prj ON e.project_name = prj.name
 		GROUP BY e.folder_name, e.project_name, e.package_name
 
 	 ), LastDayAnalyse
