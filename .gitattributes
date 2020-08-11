@@ -1,4 +1,3 @@
 *.sql linguist-detectable=true
 *.sql linguist-language=sql
-*.ps1 linguist-detectable=true
-*.ps1 linguist-language=PowerShell
+
