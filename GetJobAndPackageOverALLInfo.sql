@@ -1,3 +1,6 @@
+SET QUOTED_IDENTIFIER ON
+SET ANSI_NULLS ON
+GO
 -- =============================================
 -- Author:		mrh
 -- Create date: 1398/10/12
@@ -20,7 +23,11 @@ BEGIN
 	
 	--------------- Job History
 	SELECT	sjh.server, sjh.job_id, sjh.step_id,
-			sjh.step_name, sjh.message, sjh.run_status,
+			sjh.step_name, sjh.message, sjh.run_status AS Steprun_status,
+			CASE run_status	WHEN 0 THEN 'Failed' WHEN 1 THEN 'Succeeded'		
+							WHEN 2 THEN 'Retry'	WHEN 3 THEN 'Canceled'	
+							WHEN 4 THEN 'In Progress' ELSE NULL END
+			AS Steprun_statusName,
 			CONVERT(DATETIME,CONCAT(LEFT(sjh.run_date, 04),'/',SUBSTRING( CAST(sjh.run_date AS CHAR(10)), 5, 2 ),'/',RIGHT(sjh.run_date, 2),' ',
 					STUFF( STUFF( RIGHT(REPLICATE( '0', 6 ) + CAST(sjh.run_time AS VARCHAR(6)), 6), 3, 0, ':' ), 6, 0, ':' ))) AS Run_DateTime,
 	
@@ -61,8 +68,8 @@ BEGIN
 			H.TotalStep,
 			 '}{' AS Seperator,
 			JI.step_id AS [قدم],JI.step_name AS [نام_قدم],
-			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 4, JI.StepLastRunOutcome) AS last_run_outcome,
-			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 'In Progress', JI.StepLastRunOutcomeName) --در حال حرکت در اجرا
+			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 4, h.Steprun_status) AS StepLastRun_Staus,
+			IIF(JI.JobLastStepExecuted  < JI.step_id AND Job_stop_execution_date IS NULL, 'In Progress', h.Steprun_statusName) --در حال حرکت در اجرا
 					AS [نتیجه آخرین اجرا],
 			CONCAT(NULLIF(dbo.getShamsiDate( JI.next_scheduled_run_date ),'') + ' ' ,CONVERT(TIME(0),JI.next_scheduled_run_date)) [تاریخ اجرای بعدی],
 			--History.run_status/*دارای توضیح*/, 
@@ -146,7 +153,7 @@ BEGIN
 	SELECT	J.نام, J.job_id, J.AvgJobDuration,
 			J.[شروع جاب], J.[شروع قدم], J.[پایان جاب], J.TotalStep,
 			J.Seperator, 
-			J.قدم, J.نام_قدم, J.last_run_outcome, J.[نتیجه آخرین اجرا], J.[تاریخ اجرای بعدی],
+			J.قدم, J.نام_قدم, J.StepLastRun_Staus, J.[نتیجه آخرین اجرا], J.[تاریخ اجرای بعدی],
 			J.[run_duration (DD:HH:MM:SS)],
 			J.AvgStepDuration, J.server,
 			--------
@@ -154,25 +161,25 @@ BEGIN
 			P.TotalAVG, P.LastDayAVGDuration,
 			P.LastDayStartTime, P.TotalLastRunEndTime,
 			P.LastRunStatus,  dbo.GetExecutionStatusName(P.LastRunStatus) LastRunStatusName,
-			P.LastRunDuration, LastRunExecutionID, LastestFailedExecutionID,
+			P.LastRunDuration, LastRunExecutionID,-- LastestFailedExecutionID,
 			P.LastDaySuccessCount,P.LastDayFailedCount ,
 			P.TodaySuccessCount,P.TodayFailedCount,
 			P.TotalSuccess, P.TotalRunning, P.TotalCanceled, P.TotalFailed,
 			---------------------------
-			NULLIF(COUNT( IIF(J.last_run_outcome=0 
-							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='failed' 
+			NULLIF(COUNT( IIF(J.StepLastRun_Staus = 0 
+							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='Failed' 
 								OR p.LastRunStatus IS NULL
 								) ,1,NULL) 
 						) OVER(), 0) 
 			AS OverallFailedCount,
-			NULLIF(COUNT( IIF(	J.last_run_outcome=1 
-							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='succeeded' 
+			NULLIF(COUNT( IIF(	J.StepLastRun_Staus = 1 
+							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='Succeeded' 
 								OR p.LastRunStatus IS NULL
 								) ,1,NULL) 
 						) OVER(), 0) 
 			AS OverallSucessCount,
 			
-			NULLIF(COUNT( IIF(j.[نتیجه آخرین اجرا] LIKE N'In Progress' ,1,NULL) ) OVER(), 0) AS OverallRunningCount
+			NULLIF(COUNT( IIF(j.StepLastRun_Staus = 4 /*In progress*/ ,1,NULL) ) OVER(), 0) AS OverallRunningCount
 	FROM	#JobsData J FULL JOIN
 				#PackageData P ON J.PackageFolderPath = P.Package_path
 	--فقط پکیج یا جاب های روز قبل
