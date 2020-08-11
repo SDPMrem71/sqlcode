@@ -92,27 +92,26 @@ BEGIN
 		--تغییر سشن از طریق ریستارت و غیره می باشد
 	---------------------- Package Total Run Data
   ;WITH TotalAnalyze 
-	AS(	SELECT	CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
-			e.package_name,
-			AVG(DATEDIFF( MILLISECOND, op.start_time, op.end_time )) AS [TotalAVG],
-			MAX(CONVERT(DATETIME,op.end_time)) [TotalLastRunEndTime],
-			--MAX(CONVERT(DATETIME,e.start_time)) OVER( PARTITION BY e.folder_name, e.project_name, e.package_name) [TotalLastRunStartTime],
-			MAX(e.execution_id)  LastRunExecutionID,
-			COUNT( IIF(op.status=7,1,NULL) )  TotalSuccess,
-			COUNT( IIF(op.status=2,1,NULL) ) TotalRunning,
-			COUNT( IIF(op.status=3,1,NULL) )  TotalCanceled,
-			COUNT( IIF(op.status=4,1,NULL) ) TotalFailed--,
-			--MAX( IIF(op.status=4, e.execution_id ,NULL) ) LastestFailedExecutionID
-		FROM	internal.executions e INNER JOIN
-					internal.operations op ON op.operation_id = e.execution_id INNER JOIN 
-					/* فقط پکیج هایی که در حال حاضر در سرور هستند*/
-						internal.folders dir ON e.folder_name = dir.name INNER JOIN 
-						--شرط ورژن پروژه ها بررسی نشده است تا اجرای همه ی ورژن ها بررسی شود
-							internal.projects prj ON e.project_name = prj.name
-		GROUP BY e.folder_name, e.project_name, e.package_name
+	AS(	SELECT	e.folder_name, e.project_name, e.package_name,
+				AVG(DATEDIFF( MILLISECOND, op.start_time, op.end_time )) AS [TotalAVG],
+				MAX(CONVERT(DATETIME,op.end_time)) [TotalLastRunEndTime],
+				--MAX(CONVERT(DATETIME,e.start_time)) OVER( PARTITION BY e.folder_name, e.project_name, e.package_name) [TotalLastRunStartTime],
+				MAX(e.execution_id)  LastRunExecutionID,
+				COUNT( IIF(op.status=7,1,NULL) )  TotalSuccess,
+				COUNT( IIF(op.status=2,1,NULL) ) TotalRunning,
+				COUNT( IIF(op.status=3,1,NULL) )  TotalCanceled,
+				COUNT( IIF(op.status=4,1,NULL) ) TotalFailed--,
+				--MAX( IIF(op.status=4, e.execution_id ,NULL) ) LastestFailedExecutionID
+			FROM	internal.executions e INNER JOIN
+						internal.operations op ON op.operation_id = e.execution_id INNER JOIN 
+						/* فقط پکیج هایی که در حال حاضر در سرور هستند*/
+							internal.folders dir ON e.folder_name = dir.name INNER JOIN 
+							--شرط ورژن پروژه ها بررسی نشده است تا اجرای همه ی ورژن ها بررسی شود
+								internal.projects prj ON e.project_name = prj.name
+			GROUP BY e.folder_name, e.project_name, e.package_name
 
 	 ), LastDayAnalyse
-	AS  (	SELECT		CONCAT('SSISDB\',e.folder_name,'\',e.project_name,'\',e.package_name,'\') AS Package_path,
+	AS  (	SELECT		e.folder_name, e.project_name, e.package_name,
 		 				MIN(CONVERT(DATETIME,op.start_time)) LastDayStartTime,
 						--CONVERT(VARCHAR(8),DATEADD(MILLISECOND,AVG(DATEDIFF(MILLISECOND, op.start_time,op.end_time)),0),114) LastDayAVGDuration,
 						CONVERT(TIME(0),DATEADD(MILLISECOND,AVG(DATEDIFF(MILLISECOND, op.start_time,op.end_time)),0)) LastDayAVGDuration,
@@ -146,8 +145,9 @@ BEGIN
 			LDA.TodaySuccessCount,LDA.TodayFailedCount, LastestFailedExecutionID
 	INTO #PackageData
 	FROM	TotalAnalyze TA LEFT JOIN 
-				LastDayAnalyse LDA ON LDA.Package_path = TA.Package_path;
-	
+				LastDayAnalyse LDA ON	LDA.folder_name = TA.folder_name
+									AND LDA.project_name = TA.project_name
+									AND LDA.package_name = TA.package_name;
 	---------------------------------------------------------------------
 	
 	SELECT	J.نام, J.job_id, J.AvgJobDuration,
@@ -157,33 +157,34 @@ BEGIN
 			J.[run_duration (DD:HH:MM:SS)],
 			J.AvgStepDuration, J.server,
 			--------
-			p.Package_path, p.package_name,
+			P.package_name,
 			P.TotalAVG, P.LastDayAVGDuration,
 			P.LastDayStartTime, P.TotalLastRunEndTime,
 			P.LastRunStatus,  dbo.GetExecutionStatusName(P.LastRunStatus) LastRunStatusName,
-			P.LastRunDuration, LastRunExecutionID,-- LastestFailedExecutionID,
+			P.LastRunDuration, P.LastRunExecutionID,-- LastestFailedExecutionID,
 			P.LastDaySuccessCount,P.LastDayFailedCount ,
 			P.TodaySuccessCount,P.TodayFailedCount,
 			P.TotalSuccess, P.TotalRunning, P.TotalCanceled, P.TotalFailed,
 			---------------------------
 			NULLIF(COUNT( IIF(J.StepLastRun_Staus = 0 
-							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='Failed' 
-								OR p.LastRunStatus IS NULL
+							AND (  dbo.GetExecutionStatusName(P.LastRunStatus) ='Failed' 
+								OR P.LastRunStatus IS NULL
 								) ,1,NULL) 
 						) OVER(), 0) 
 			AS OverallFailedCount,
 			NULLIF(COUNT( IIF(	J.StepLastRun_Staus = 1 
-							AND (  dbo.GetExecutionStatusName(p.LastRunStatus) ='Succeeded' 
-								OR p.LastRunStatus IS NULL
+							AND (  dbo.GetExecutionStatusName(P.LastRunStatus) ='Succeeded' 
+								OR P.LastRunStatus IS NULL
 								) ,1,NULL) 
 						) OVER(), 0) 
 			AS OverallSucessCount,
 			
-			NULLIF(COUNT( IIF(j.StepLastRun_Staus = 4 /*In progress*/ ,1,NULL) ) OVER(), 0) AS OverallRunningCount
+			NULLIF(COUNT( IIF(J.StepLastRun_Staus = 4 /*In progress*/ ,1,NULL) ) OVER(), 0) AS OverallRunningCount,
+			CONCAT('SSISDB\',P.folder_name,'\',P.project_name,'\',P.package_name,'\') AS Package_path
 	FROM	#JobsData J FULL JOIN
-				#PackageData P ON J.PackageFolderPath = P.Package_path
+				#PackageData P ON J.PackageFolderPath = CONCAT('SSISDB\',P.folder_name,'\',P.project_name,'\',P.package_name,'\')
 	--فقط پکیج یا جاب های روز قبل
 	-- یک جاب میتواند پکیج نداشته باشد، یا یک پکیج میتواند بدون جاب اجرا شود
-	WHERE	P.LastDayStartTime IS NOT NULL OR J.job_id IS NOT null
+	WHERE	P.LastDayStartTime IS NOT NULL OR J.job_id IS NOT NULL
 END
 GO
