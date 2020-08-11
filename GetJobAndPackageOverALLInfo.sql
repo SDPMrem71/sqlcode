@@ -75,12 +75,9 @@ BEGIN
 			--History.run_status/*دارای توضیح*/, 
 			H.[run_duration (DD:HH:MM:SS)],
 			
-			STUFF(STUFF(STUFF(RIGHT(REPLICATE('0', 8) + 
-									CAST(	(H.AvgStepDuration / 3600  % 24 * 10000) +
-											(H.AvgStepDuration / 60 % 60 * 100) + 
-											(H.AvgStepDuration % 3600 % 60) AS VARCHAR(8)), 8), 3, 0, ':'), 6, 0, ':'), 9, 0, ':') AS AvgStepDuration,
+			CONCAT( H.AvgStepDuration / 86400 , ':' , CAST( DATEADD(ms, H.AvgStepDuration * 1000, 0) AS TIME(0) )) [AvgStepDuration],
 			H.server,
-			PackageFolderPath = ISNULL(pj.command,'Nلطفا به جاب مراجعه بفرمایید.')
+			PackageFolderPath = ISNULL(pj.command,N'لطفا به جاب مراجعه بفرمایید.')
 	INTO #JobsData
 	FROM	JobsInfo JI INNER JOIN 
 				#JobHistory AS H ON	JI.job_id = H.job_id
