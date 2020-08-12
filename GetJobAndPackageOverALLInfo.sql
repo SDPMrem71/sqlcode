@@ -54,11 +54,14 @@ BEGIN
 			در صورت اجرا 0 است
 	*/
 	SELECT	ji.JobName AS [نام], ji.job_id ,
-			STUFF(STUFF(STUFF(RIGHT(REPLICATE('0', 8) + 
-									CAST(	(H.AvgJobDuration / 3600  % 24 * 10000) +
-											(H.AvgJobDuration / 60 % 60 * 100) + 
-											(H.AvgJobDuration % 3600 % 60) AS VARCHAR(8)), 8), 3, 0, ':'), 6, 0, ':'), 9, 0, ':') AS AvgJobDuration,
 
+			/*دو روش یکسان برای یک هدف*/
+			CONCAT( H.AvgJobDuration / 86400 , ':' , CAST( DATEADD(ms, H.AvgJobDuration * 1000, 0) AS TIME(0) )) [AvgJobDuration],
+			STUFF(STUFF(STUFF(RIGHT(REPLICATE('0', 8) + 
+									CAST(	(H.AvgStepDuration / 3600  % 24 * 10000) +
+											(H.AvgStepDuration / 60 % 60 * 100) + 
+											(H.AvgStepDuration % 3600 % 60) AS VARCHAR(8)), 8), 3, 0, ':'), 6, 0, ':'), 9, 0, ':') AS [AvgStepDuration],
+			---
 			CONCAT(dbo.getShamsiDate( JI.Job_start_execution_date ),' ',CAST(JI.Job_start_execution_date AS TIME(0))) AS [شروع جاب] ,
 			CONCAT(dbo.getShamsiDate( H.Run_DateTime ),' ',CAST(Run_DateTime AS TIME(0) )) AS [شروع قدم] ,
 			CASE WHEN Job_stop_execution_date IS NULL
