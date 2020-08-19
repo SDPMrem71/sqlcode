@@ -82,7 +82,7 @@ BEGIN
 			H.server,
 			PackageFolderPath = ISNULL(pj.command,N'لطفا به جاب مراجعه بفرمایید.')
 	INTO #JobsData
-	FROM	JobsInfo JI INNER JOIN 
+	FROM	JobsInfo JI left join
 				#JobHistory AS H ON	JI.job_id = H.job_id
 								AND JI.step_id = H.step_id 
 								AND H.rowN =1	LEFT JOIN
