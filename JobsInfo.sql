@@ -16,9 +16,8 @@ SELECT	/*info*/
 		AS StepLastRunOutcomeName,
 		/*Execution Times*/
 		STUFF(STUFF(STUFF(RIGHT(REPLICATE('0', 8) + CAST( steps.last_run_duration AS VARCHAR(8)), 8), 3, 0, ':'), 6, 0, ':'), 9, 0, ':') AS last_run_duration,
-		CONVERT(DATETIME,CONCAT(LEFT(steps.last_run_date, 04),'/',SUBSTRING( CAST(steps.last_run_date AS CHAR(10)), 5, 2 ),'/',RIGHT(steps.last_run_date, 2),' ',
-							STUFF( STUFF( RIGHT(REPLICATE( '0', 6 ) + CAST(steps.last_run_time AS VARCHAR(6)), 6), 3, 0, ':' ), 6, 0, ':' ))) 
-		AS Step_StartDate, lastactivity.start_execution_date AS Job_start_execution_date, 
+		TRY_CONVERT(DATETIME,CONCAT(	STUFF(STUFF(RIGHT(REPLICATE('0',8) + CAST(steps.last_run_date AS VARCHAR(8)),8),5,0,'-'),8,0,'-'),' ',
+												STUFF( STUFF( RIGHT(REPLICATE( '0', 6 ) + CAST(steps.last_run_time AS VARCHAR(6)), 6), 3, 0, ':' ), 6, 0, ':' ) ) ) AS Step_StartDate, lastactivity.start_execution_date AS Job_start_execution_date, 
 		lastactivity.stop_execution_date AS Job_stop_execution_date, lastactivity.next_scheduled_run_date,
 		/*Schedule info*/
 		CASE	WHEN sch.freq_type = 4 THEN 'Daily' WHEN sch.freq_type = 8 THEN 'Weekly' WHEN sch.freq_type IN ('16','32') THEN 'Monthly' END frequency,
