@@ -180,7 +180,7 @@ BEGIN
 			AS OverallSucessCount,
 			
 			NULLIF(COUNT( IIF(J.StepLastRun_Staus = 4 /*In progress*/ ,1,NULL) ) OVER(), 0) AS OverallRunningCount,
-			CONCAT('SSISDB\',P.folder_name,'\',P.project_name,'\',P.package_name,'\') AS Package_path
+			COALESCE(CONCAT('SSISDB\',P.folder_name,'\',P.project_name,'\',P.package_name,'\'),j.PackageFolderPath) AS Package_path
 	FROM	#JobsData J FULL JOIN
 				#PackageData P ON J.PackageFolderPath = CONCAT('SSISDB\',P.folder_name,'\',P.project_name,'\',P.package_name,'\')
 	--فقط پکیج یا جاب های روز قبل
